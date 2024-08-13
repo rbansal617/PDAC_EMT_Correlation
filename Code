@@ -57,3 +57,76 @@ adata = adata1.concatenate(adata2, adata3, adata4, adata5, adata6, adata7, batch
 
 adata.var["mt"]= adata.var_names.str.startswith("Mt-")
 sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace = True)
+
+adata1 = sc.read_h5ad('Data/Kim et al, 2024/p1.adata')
+adata2 = sc.read_h5ad('Data/Kim et al, 2024/p2.adata')
+adata3 = sc.read_h5ad('Data/Kim et al, 2024/p3.adata')
+adata4 = sc.read_h5ad('Data/Kim et al, 2024/p4.adata')
+adata5 = sc.read_h5ad('Data/Kim et al, 2024/p5.adata')
+adata6 = sc.read_h5ad('Data/Kim et al, 2024/p6.adata')
+adata7 = sc.read_h5ad('Data/Kim et al, 2024/p7.adata')
+
+for adata_patient in [adata1, adata2, adata3, adata4, adata5, adata6, adata7]:
+    adata_patient.var_names_make_unique()
+
+# Concatenate the data
+adata = adata1.concatenate(adata2, adata3, adata4, adata5, adata6, adata7, batch_key='sample_id', join='outer')
+
+# Store raw counts in the layers attribute
+adata.layers["counts"] = adata.X.copy()
+
+# Calculate QC metrics without normalization or log transformation
+adata.var["mt"] = adata.var_names.str.startswith("Mt-")
+sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
+
+# Check shapes and ensure no empty dimensions
+print(f"Shape of adata.X: {adata.X.shape}")
+print(f"Shape of adata.layers['counts']: {adata.layers['counts'].shape}")
+
+# Validate there are no zero-sized dimensions
+assert adata.X.shape[0] > 0, "adata.X has zero-sized dimension"
+assert adata.X.shape[1] > 0, "adata.X has zero-sized dimension"
+assert adata.layers["counts"].shape[0] > 0, "adata.layers['counts'] has zero-sized dimension"
+assert adata.layers["counts"].shape[1] > 0, "adata.layers['counts'] has zero-sized dimension"
+
+# Ensure raw counts are used for the models
+# Example usage of raw counts for models
+# Assuming `regression_model` and `cell2location_model` are your models
+
+# Ensure the counts are in the right format for the models
+counts_tensor = torch.tensor(adata.layers["counts"].toarray())
+print(f"Shape of counts_tensor: {counts_tensor.shape}")
+
+# Validate there are no zero-sized dimensions in counts_tensor
+assert counts_tensor.shape[0] > 0, "counts_tensor has zero-sized dimension"
+assert counts_tensor.shape[1] > 0, "counts_tensor has zero-sized dimension"
+
+fig, axs = plt.subplots(1, 4, figsize=(15, 4))
+sns.histplot(adata.obs["total_counts"], kde=False, ax=axs[0])
+sns.histplot(
+    adata.obs["total_counts"][adata.obs["total_counts"] < 10000],
+    kde=False,
+    bins=40,
+    ax=axs[1],
+)
+sns.histplot(adata.obs["n_genes_by_counts"], kde=False, bins=60, ax=axs[2])
+sns.histplot(
+    adata.obs["n_genes_by_counts"][adata.obs["n_genes_by_counts"] < 4000],
+    kde=False,
+    bins=60,
+    ax=axs[3],
+)
+sc.pp.filter_cells(adata, min_counts=0)
+sc.pp.filter_cells(adata, max_counts=5000)
+adata = adata[adata.obs["pct_counts_mt"] < 20].copy()
+print(f"#cells after MT filter: {adata.n_obs}")
+sc.pp.filter_genes(adata, min_cells=10)
+
+sc.pl.highest_expr_genes(adata, n_top=20)
+sc.pp.highly_variable_genes(adata, flavor="seurat", n_top_genes=5000)
+
+adata = adata[:, adata.var.highly_variable]
+
+sc.pp.pca(adata)
+sc.pl.pca_variance_ratio(adata)
+
