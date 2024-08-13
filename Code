@@ -1,0 +1,59 @@
+import scanpy as sc 
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import anndata as ad
+sc.set_figure_params(facecolor="white", figsize = (8, 8))
+from matplotlib.colors import LinearSegmentedColormap
+import scanpy.external as sce
+import harmonypy
+import scipy.stats as stats
+import numpy as np
+import itertools
+from itertools import combinations
+import plotting_functions as plot
+sc.settings.verbosity = 3
+import squidpy as sq
+import diff
+import zipfile
+import os
+import json
+import cell2location as c2l
+from anndata import AnnData
+from scvi_colab import install
+import os
+import tempfile
+import matplotlib.pyplot as plt
+import numpy as np
+import scanpy as sc
+import scvi
+import seaborn as sns
+import torch
+from scvi.external import RNAStereoscope, SpatialStereoscope
+from pygam import LinearGAM, s
+from scipy import stats
+import infercnvpy
+plt.rcParams['font.family'] = 'Times New Roman'
+sns.set(style="white", palette="muted", color_codes=True)
+sc.settings.set_figure_params(dpi=100, frameon=False, figsize=(8, 8))
+#Either this adata object for obs(1) or spatial(2)
+# Read each patient's AnnData file
+adata1 = sc.read_h5ad('Data/Kim et al, 2024/p1.adata')
+adata2 = sc.read_h5ad('Data/Kim et al, 2024/p2.adata')
+adata3 = sc.read_h5ad('Data/Kim et al, 2024/p3.adata')
+adata4 = sc.read_h5ad('Data/Kim et al, 2024/p4.adata')
+adata5 = sc.read_h5ad('Data/Kim et al, 2024/p5.adata')
+adata6 = sc.read_h5ad('Data/Kim et al, 2024/p6.adata')
+adata7 = sc.read_h5ad('Data/Kim et al, 2024/p7.adata')
+
+for adata_patient in [adata1, adata2, adata3, adata4, adata5, adata6, adata7]:
+    sc.pp.normalize_total(adata_patient, inplace=True)
+    sc.pp.log1p(adata_patient)
+    adata_patient.var_names_make_unique()
+    
+    
+adata = adata1.concatenate(adata2, adata3, adata4, adata5, adata6, adata7, batch_key = 'sample_id', join='outer')
+# adata.var_names_make_unique()
+
+adata.var["mt"]= adata.var_names.str.startswith("Mt-")
+sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace = True)
